@@ -1,0 +1,25 @@
+<RCC>
+    <qresource prefix="/">
+        <file>assets/auralogo.png</file>
+        <file>assets/fonts/evesansneue-bold.ttf</file>
+        <file>assets/fonts/evesansneue-bolditalic.ttf</file>
+        <file>assets/fonts/evesansneue-condensed.ttf</file>
+        <file>assets/fonts/evesansneue-condensedbold.ttf</file>
+        <file>assets/fonts/evesansneue-condensedbolditalic.ttf</file>
+        <file>assets/fonts/evesansneue-condenseditalic.ttf</file>
+        <file>assets/fonts/evesansneue-expanded.ttf</file>
+        <file>assets/fonts/evesansneue-expandedbold.ttf</file>
+        <file>assets/fonts/evesansneue-expandedbolditalic.ttf</file>
+        <file>assets/fonts/evesansneue-expandeditalic.ttf</file>
+        <file>assets/fonts/evesansneue-regular.ttf</file>
+        <file>assets/ui/main.qml</file>
+        <file>assets/icons/region.png</file>
+        <file>assets/icons/system.png</file>
+        <file>assets/icons/system-16x16.png</file>
+        <file>assets/icons/volume-1.png</file>
+        <file>assets/icons/volume-2.png</file>
+        <file>assets/icons/volume-3.png</file>
+        <file>assets/ui/options.qml</file>
+        <file>assets/ui/settings.js</file>
+    </qresource>
+</RCC>

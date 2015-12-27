@@ -1,0 +1,43 @@
+#ifndef EVE_LOG_H
+#define EVE_LOG_H
+
+#include <vector>
+
+namespace EveLib
+{
+
+class EveLog {
+
+public:
+	/**
+	Constructor
+	*/
+	EveLog(const char * logDir);
+
+	/**
+	Get Character name from a log file
+	@param logFile String of full path to EVE log file
+	*/
+	const char* getCharFromLogFile(const char* logFile);
+
+	/**
+	Get a list of available characters, based on their appearance in EVE log files
+	@return QStringList List of character names
+	*/
+	const char* getAvailableCharacters();
+
+	/**
+	Get the first log file for a specific character, ordered by date descending
+	@param charName EVE Character name
+	@return QString Absolute path to log file
+	*/
+	const char* getFirstLogForChar(const char* charName);
+
+
+private:
+	void _init();
+	const char* _logDir;
+};
+
+};
+#endif

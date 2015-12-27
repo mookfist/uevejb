@@ -1,0 +1,207 @@
+#include "EveLog.h"
+#include <QUrl>
+
+namespace Eve {
+
+EveLog::EveLog(const char* logDir) {
+  _logDir = logDir;
+}
+
+EveLog::EveLog() : QObject() {
+	_init();
+}
+
+EveLog::EveLog(QUrl logDir) : QObject() {
+	_logDir = QDir(logDir.toLocalFile());
+	_init();
+}
+
+EveLog::EveLog(QString logDir) : QObject() {
+	_logDir = QDir(logDir);
+	_init();
+}
+
+EveLog::EveLog(QDir logDir) : QObject() {
+	_logDir = logDir;
+	_init();
+}
+
+void EveLog::_init() {
+	connect(&watcher_logDir, SIGNAL(directoryChanged(const QString&)), this, SLOT(on_directoryChanged(const QString&)));
+	connect(&watcher_logFile, SIGNAL(fileChanged(const QString&)), this, SLOT(on_fileChanged(const QString&)));
+}
+
+QString EveLog::getFirstLogForChar(QString charName) {
+
+	QString logFilename;
+	QStringList logFiles = _logDir.entryList(QDir::Files, QDir::Name | QDir::Reversed);
+
+	for (int i = 0; i < logFiles.size(); ++i) {
+
+		if (getCharFromLogFile(_logDir.absolutePath() + "/" + logFiles.at(i)) == charName) {
+			logFilename = logFiles.at(i);
+			break;
+		}
+	}
+
+	qDebug() << logFilename;
+
+	return logFilename;
+}
+
+QString EveLog::getCharFromLogFile(QString logFile) {
+	QString character;
+
+	QFile f_logFile(logFile);
+	if (!f_logFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+		emit(error("Failed to load log file: " + logFile));
+		return "";
+	}
+
+
+	QTextStream in(&f_logFile);
+
+	int logLineCounter = 0;
+
+	while (logLineCounter < 2) {
+		in.readLine();
+		logLineCounter++;
+	}
+
+	QString listener = in.readLine();
+	if (listener.startsWith("  Listener:")) {
+		character = listener.split(":").at(1).trimmed();
+	}
+
+	return character;
+}
+
+bool EveLog::initDirWatcher() {
+	QString dir = _logDir.absolutePath();
+
+	qDebug() << "[EveLog] initWatchers: " << dir;
+
+	if (!watcher_logDir.addPath(dir)) {
+		qDebug() << "[EveLog] Failed to start watching " << dir;
+		emit(error("Failed to start watching log file: " + dir));
+		return false;
+	} else {
+		qDebug() << "[EveLog] Watching game logs directory for new files";
+		return true;
+	}
+}
+
+bool EveLog::initFileWatcher(QString charName) {
+
+	_charName = charName;
+	
+	for (int i = 0; i < watcher_logFile.files().size(); ++i) {
+		QString dirName = watcher_logFile.files().at(i);
+		if (watcher_logFile.removePath(dirName)) {
+			qDebug() << "[EveLog] Stopped watching " << dirName;
+		} else {
+			qDebug() << "[EveLog] Failed to stop watching " << dirName;
+			emit(error("Failed to stop watching log file: " + dirName));
+			return false;
+		}
+	}
+
+	QString logFile = getFirstLogForChar(charName);
+
+	if (logFile != "") {
+	
+		if (!watcher_logFile.addPath(_logDir.absolutePath() + "/" + logFile)) {
+			qDebug() << "[EveLog] Failed to start watching the log file" << logFile;
+			emit(error("Failed to start watching the log file: " + logFile));
+			return false;
+		} else {
+			qDebug() << "[EveLog] Monitoring log file: " << logFile;
+		}
+	} else {
+		qDebug() << "[EveLog] No log files for " << charName << " available for watching";
+	}
+
+	return true;
+}
+
+void EveLog::on_fileChanged(QString fileName) {
+
+	QFile file(fileName);
+	
+	if (!file.exists()) {
+		qDebug() << "[EveLog] Log file removed: " << fileName;
+		return;
+	}
+
+	if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+		emit(error("Unable to open log file: " + fileName));
+		qDebug() << "[EveLog] Unable to open log file: " << fileName;
+	}
+
+	file.seek(file.size() - 200);
+	QString logTail = file.read(200);
+	file.close();
+
+	QStringList logLines = logTail.split("\n");
+	qDebug() << logLines;
+	QString lastLine = logLines.at(logLines.size() - 2);
+
+	// [ 2015.01.30 00:58:16 ] (None) Jumping from Erme to Botane
+	QString checkFor = "(None) Jumping from ";
+	if (lastLine.contains("(None) Jumping from ")) {
+		int pos = lastLine.indexOf(checkFor);
+		QString jumpline = lastLine.mid(pos + checkFor.size(), lastLine.size());
+		qDebug() << "Jump line: " << jumpline;
+
+		QStringList systems = jumpline.split(" to ");
+		emit(newSystem(systems.at(1)));
+	} else {
+		qDebug() << "Last line is not a jump line";
+		qDebug() << lastLine;
+	}
+
+	qDebug() << "[EveLog] Watcher noticed that " << fileName << " has changed.";
+}
+
+void EveLog::on_directoryChanged(QString dirName) {
+	qDebug() << "[EveLog] Watcher noticed that " << dirName << " has changed.";
+	initFileWatcher(_charName);
+}
+
+void EveLog::setDir(QString dir) {
+	_logDir = QDir(dir);
+}
+
+void EveLog::setDir(QUrl dir) {
+	_logDir = QDir(dir.toLocalFile());
+}
+
+void EveLog::setDir(QDir dir) {
+	_logDir = dir;
+}
+
+QStringList EveLog::getAvailableCharacters() {
+
+	QStringList logFiles = _logDir.entryList(QDir::Files, QDir::Name);
+	int logLineCounter = 0;
+
+	QStringList characters;
+	
+	for (int i = 0; i < logFiles.size(); ++i) {
+		QString s_logFile = _logDir.absolutePath() + "/" + logFiles.at(i);
+		if (s_logFile.endsWith(".txt")) {
+
+			QString character = getCharFromLogFile(s_logFile);
+			if (character != "")
+			{
+				if (characters.indexOf(character) == -1) {
+					characters.push_back(character);
+				}
+			}
+		}
+	}
+
+	return characters;
+}
+
+}
